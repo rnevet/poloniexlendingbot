@@ -154,7 +154,7 @@ def refreshTotalLended():
 def stringifyTotalLended():
 	result = 'Lended: '
 	for key in sorted(totalLended):
-		result += '[%.3f %s @ %.4f%%] ' % (Decimal(totalLended[key]), key, Decimal(rateLended[key]*100/totalLended[key]))
+		result += '[%.4f %s @ %.4f%%] ' % (Decimal(totalLended[key]), key, Decimal(rateLended[key]*100/totalLended[key]))
 	return result
 
 def createLoanOffer(cur,amt,rate):
@@ -176,7 +176,7 @@ loanOrdersRequestLimit = {}
 defaultLoanOrdersRequestLimit = 200
 
 def cancelAndLoanAll():
-	loanOffers = bot.returnOpenLoanOffers('BTC') #some bug with api wrapper? no idea why I have to provide a currency, and then receive every other
+	loanOffers = bot.returnOpenLoanOffers()
 	if type(loanOffers) is list: #silly api wrapper, empty dict returns a list, which brakes the code later.
 		loanOffers = {}
 	if loanOffers.get('error'):
