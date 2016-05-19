@@ -4,6 +4,7 @@ import datetime
 import atexit
 import json
 import io
+import ConsoleUtils
 from RingBuffer import RingBuffer
 
 class ConsoleOutput(object):
@@ -17,9 +18,10 @@ class ConsoleOutput(object):
 
 	def status(self, msg, time=''):
 		status = str(msg)
-		if msg != '' and len(status) > 99:
+		cols = ConsoleUtils.get_terminal_size()[0]
+		if msg != '' and len(status) > cols:
 			#truncate status, try preventing console bloating
-			status = str(msg)[:96] + '...' 
+			status = str(msg)[:cols-4] + '...'
 		update = '\r'
 		update += status
 		update += ' ' * (len(self._status) - len(status))
@@ -32,26 +34,36 @@ class ConsoleOutput(object):
 		update += line + ' ' * (len(self._status) - len(line)) + '\n'
 		update += self._status
 		sys.stderr.write(update)
-		
+
+
 class JsonOutput(object):
 	def __init__(self, file, logLimit):
 		self.jsonOutputFile = file
 		self.jsonOutput = {}
+		self.jsonOutputCoins = {}
+		self.jsonOutput["raw_data"] = self.jsonOutputCoins
 		self.jsonOutputLog = RingBuffer(logLimit);
 
 	def status(self, status, time):
 		self.jsonOutput["last_update"] = time
 		self.jsonOutput["last_status"] = status
-		self.writeJsonFile()
 
 	def printline(self, line):
 		self.jsonOutputLog.append(line)
-		
+
 	def writeJsonFile(self):
 		with io.open(self.jsonOutputFile, 'w', encoding='utf-8') as f:
 			self.jsonOutput["log"] = self.jsonOutputLog.get()
 			f.write(unicode(json.dumps(self.jsonOutput, ensure_ascii=False, sort_keys=True)))
 			f.close()
+	
+	def statusValue(self, coin, key, value):
+		if(coin not in self.jsonOutputCoins):
+			self.jsonOutputCoins[coin] = {}
+		self.jsonOutputCoins[coin][key] = str(value)
+	
+	def clearStatusValues(self):
+		self.jsonOutputCoins = {}
 
 class Logger(object):
 	def __init__(self, jsonFile = '', jsonLogSize = -1):
@@ -82,9 +94,19 @@ class Logger(object):
 
 	def refreshStatus(self, lended=''):
 		if lended != '':
-			self._lended = lended;		
+			self._lended = lended;
 		self.console.status(self._lended, self.timestamp())
-		
+
+	def updateStatusValue(self, coin, key, value):
+		if(hasattr(self.console , 'statusValue')):
+			self.console.statusValue(coin, key, value)
+	
+	def persistStatus(self):
+		if(hasattr(self.console , 'writeJsonFile')):
+			self.console.writeJsonFile()
+		if(hasattr(self.console , 'clearStatusValues')):
+			self.console.clearStatusValues()
+
 	def digestApiMsg(self, msg):
 		try:
 			m = (msg['message'])
